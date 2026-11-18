@@ -1,9 +1,9 @@
 # SnippetPermission
 
-Servicio de permisos de [Snippet Searcher](https://github.com/MartinaCousido/SnippetSearcher): registra al owner de cada snippet, gestiona con quién se comparte y responde quién puede leerlo o editarlo.
+Servicio de permisos de [Snippet Searcher](https://github.com/ingdesis/SnippetSearcher): registra al owner de cada snippet, gestiona con quién se comparte y responde quién puede leerlo o editarlo.
 
 > La arquitectura, las user stories (US) y las decisiones técnicas del sistema completo están en el repo
-> [SnippetSearcher](https://github.com/MartinaCousido/SnippetSearcher), que es la fuente de verdad.
+> [SnippetSearcher](https://github.com/ingdesis/SnippetSearcher), que es la fuente de verdad.
 > Este README cubre solo lo específico de este servicio.
 
 ## Responsabilidad
@@ -33,7 +33,7 @@ Servicio de permisos de [Snippet Searcher](https://github.com/MartinaCousido/Sni
 
 Este servicio no llama a ningún otro servicio del sistema. Su base de datos es propia y ningún otro servicio accede a ella.
 
-Desde el navegador, acepta solo los origins de la variable `CORS_ALLOWED_ORIGINS` (`security/CorsConfig`). Las reglas están en [CORS](https://github.com/MartinaCousido/SnippetSearcher#cors) de SnippetSearcher.
+Desde el navegador, acepta solo los origins de la variable `CORS_ALLOWED_ORIGINS` (`security/CorsConfig`). Las reglas están en [CORS](https://github.com/ingdesis/SnippetSearcher#cors) de SnippetSearcher.
 
 ## Modelo de datos (lógico)
 
@@ -45,7 +45,7 @@ Desde el navegador, acepta solo los origins de la variable `CORS_ALLOWED_ORIGINS
 
 ## Operaciones
 
-Contrato definido en [Decisiones técnicas](https://github.com/MartinaCousido/SnippetSearcher#decisiones-técnicas) de SnippetSearcher.
+Contrato definido en [Decisiones técnicas](https://github.com/ingdesis/SnippetSearcher#decisiones-técnicas) de SnippetSearcher.
 
 | Operación | Endpoint | Respuesta | Quién la usa | User story |
 |---|---|---|---|---|
@@ -57,7 +57,7 @@ Contrato definido en [Decisiones técnicas](https://github.com/MartinaCousido/Sn
 
 En todos, el `userId` de quien pide es el `sub` del token de Auth0 (`security/CurrentUser`). Cuando el pedido viene de Snippet Service, este reenvía el token del usuario: nunca manda el `userId` en el cuerpo ni en un header.
 
-Además, cada operación pide un permiso del token (`security/SecurityConfig`, ver **Roles y permisos** en [Decisiones técnicas](https://github.com/MartinaCousido/SnippetSearcher#decisiones-técnicas)):
+Además, cada operación pide un permiso del token (`security/SecurityConfig`, ver **Roles y permisos** en [Decisiones técnicas](https://github.com/ingdesis/SnippetSearcher#decisiones-técnicas)):
 
 | Operación | Permiso |
 |---|---|
@@ -68,17 +68,17 @@ Sin token válido responde **401**, y sin el permiso, **403**. El health (`/actu
 
 ## Observabilidad (New Relic)
 
-El agente Java de New Relic (`9.5.0`) va en la imagen, igual que en Snippet Service: manda métricas, traces y los logs del servicio. Cada pedido lleva en el contexto de los logs (MDC) su `requestId` (el que manda Snippet Service en `X-Request-Id`, para ver juntos los logs de un mismo pedido), el usuario y el servicio. Se loguean registrar owner, compartir y borrar permisos, y los rechazos. Ver **Observabilidad (New Relic)** en [Decisiones técnicas](https://github.com/MartinaCousido/SnippetSearcher#decisiones-técnicas).
+El agente Java de New Relic (`9.5.0`) va en la imagen, igual que en Snippet Service: manda métricas, traces y los logs del servicio. Cada pedido lleva en el contexto de los logs (MDC) su `requestId` (el que manda Snippet Service en `X-Request-Id`, para ver juntos los logs de un mismo pedido), el usuario y el servicio. Se loguean registrar owner, compartir y borrar permisos, y los rechazos. Ver **Observabilidad (New Relic)** en [Decisiones técnicas](https://github.com/ingdesis/SnippetSearcher#decisiones-técnicas).
 
 En local el agente viene apagado. Para mandar datos, se levanta con `NEW_RELIC_AGENT_ENABLED=true` y `NEW_RELIC_LICENSE_KEY` (la de `SnippetSearcher-infra/newrelic/.env`), y aparece como `permission-service (local)`.
 
 ## Stack
 
-**Java 25 + Spring Boot 4.1.1 + Gradle 9.8**, con **PostgreSQL 17** propio. Las decisiones del sistema están en [Decisiones técnicas](https://github.com/MartinaCousido/SnippetSearcher#decisiones-técnicas) de SnippetSearcher.
+**Java 25 + Spring Boot 4.1.1 + Gradle 9.8**, con **PostgreSQL 17** propio. Las decisiones del sistema están en [Decisiones técnicas](https://github.com/ingdesis/SnippetSearcher#decisiones-técnicas) de SnippetSearcher.
 
 ## Imagen Docker
 
-En cada push a `dev` o `main`, GitHub Actions (`.github/workflows/cd.yml`) arma la imagen con el `Dockerfile` y la publica en GHCR como `ghcr.io/martinacousido/permission-service`. Lleva dos tags: el del ambiente (`dev` o `prod`) y el del commit (`sha-…`). La imagen es pública: las VMs la descargan sin login. Ver [Tags de las imágenes](https://github.com/MartinaCousido/SnippetSearcher-infra#tags-de-las-imágenes) en el repo de infra.
+En cada push a `dev` o `main`, GitHub Actions (`.github/workflows/cd.yml`) arma la imagen con el `Dockerfile` y la publica en GHCR como `ghcr.io/ingdesis/permission-service`. Lleva dos tags: el del ambiente (`dev` o `prod`) y el del commit (`sha-…`). La imagen es pública: las VMs la descargan sin login. Ver [Tags de las imágenes](https://github.com/ingdesis/SnippetSearcher-infra#tags-de-las-imágenes) en el repo de infra.
 
 Después de publicar la imagen, el mismo workflow entra por SSH a la VM del ambiente (`dev` → VM de dev, `main` → VM de prod) y corre `docker service update` con el tag `sha-…` del commit. Actualiza **solo** `permission-service`: los demás servicios del stack no se reinician. Usa los secrets `VM_HOST`, `VM_USER` y `VM_SSH_KEY` de los *Environments* `dev` y `prod` de este repo. La VM tiene que estar prendida.
 
@@ -102,9 +102,9 @@ Si se quiere cambiar la contraseña de la base, hay que hacerlo en el `.env` **a
 
 Para comprobar que está arriba y conectado a su base: http://localhost:8081/actuator/health tiene que responder `"status":"UP"`, con `db` también en `UP`.
 
-`AUTH0_DOMAIN` y `AUTH0_AUDIENCE` ya están en el `docker-compose.yml`: no son secretos y no van en el `.env`. Sin ellas, el servicio no arranca. Para llamar a los demás endpoints hace falta un token: ver [Cómo levantarlo](https://github.com/MartinaCousido/SnippetSearcher#cómo-levantarlo) en SnippetSearcher.
+`AUTH0_DOMAIN` y `AUTH0_AUDIENCE` ya están en el `docker-compose.yml`: no son secretos y no van en el `.env`. Sin ellas, el servicio no arranca. Para llamar a los demás endpoints hace falta un token: ver [Cómo levantarlo](https://github.com/ingdesis/SnippetSearcher#cómo-levantarlo) en SnippetSearcher.
 
-Para levantar **el sistema completo** (todos los servicios), usar `docker-compose.sistema.yml` desde el repo [SnippetSearcher](https://github.com/MartinaCousido/SnippetSearcher#cómo-levantarlo), con este repo clonado al lado. Ese archivo incluye el `docker-compose.yml` de este repo y usa su `.env`. Todos comparten el proyecto de Docker `snippet-searcher`, así que los contenedores y los datos son los mismos se levante este servicio solo o el sistema completo.
+Para levantar **el sistema completo** (todos los servicios), usar `docker-compose.sistema.yml` desde el repo [SnippetSearcher](https://github.com/ingdesis/SnippetSearcher#cómo-levantarlo), con este repo clonado al lado. Ese archivo incluye el `docker-compose.yml` de este repo y usa su `.env`. Todos comparten el proyecto de Docker `snippet-searcher`, así que los contenedores y los datos son los mismos se levante este servicio solo o el sistema completo.
 
 ### Correr los tests
 
@@ -130,7 +130,7 @@ En cada PR hacia `dev` o `main`, el CI (`.github/workflows/ci.yml`) corre `./gra
 
 ### Linter y cobertura
 
-`./gradlew build` también corre el linter y mide la cobertura. Si algo falla, el build falla, y con él el CI. Ver **Linter y cobertura** en [Decisiones técnicas](https://github.com/MartinaCousido/SnippetSearcher#decisiones-técnicas) de SnippetSearcher.
+`./gradlew build` también corre el linter y mide la cobertura. Si algo falla, el build falla, y con él el CI. Ver **Linter y cobertura** en [Decisiones técnicas](https://github.com/ingdesis/SnippetSearcher#decisiones-técnicas) de SnippetSearcher.
 
 | Herramienta | Qué revisa | Configuración |
 |---|---|---|
